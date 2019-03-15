@@ -17,6 +17,8 @@
 package org.apache.commons.pool2;
 
 /**
+ * 对象工厂，提供对象的创建、初始化、销毁等操作，由 Pool 调用。一般需要使用者自己实现这些操作。
+ *
  * An interface defining life-cycle methods for instances to be served by an
  * {@link ObjectPool}.
  * <p>

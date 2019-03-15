@@ -17,6 +17,8 @@
 package org.apache.commons.pool2;
 
 /**
+ * 池化对象的状态
+ *
  * Provides the possible states that a {@link PooledObject} may be in.
  *
  * @since 2.0
@@ -24,16 +26,19 @@ package org.apache.commons.pool2;
 public enum PooledObjectState {
     /**
      * In the queue, not in use.
+     * 在资源池中，没有被使用，处于空闲状态
      */
     IDLE,
 
     /**
      * In use.
+     * 已激活，正在被使用
      */
     ALLOCATED,
 
     /**
      * In the queue, currently being tested for possible eviction.
+     * 在资源池中，正在检测是否被清除
      */
     EVICTION,
 

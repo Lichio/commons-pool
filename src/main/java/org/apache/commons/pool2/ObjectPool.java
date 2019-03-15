@@ -20,6 +20,8 @@ import java.io.Closeable;
 import java.util.NoSuchElementException;
 
 /**
+ * 对象池，持有对象并提供取/还等方法
+ *
  * A pooling simple interface.
  * <p>
  * Example of use:

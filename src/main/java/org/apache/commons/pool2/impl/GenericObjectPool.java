@@ -110,6 +110,7 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
         }
         this.factory = factory;
 
+        // 创建容器用于缓存空闲对象
         idleObjects = new LinkedBlockingDeque<>(config.getFairness());
 
         setConfig(config);
@@ -405,6 +406,7 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
 
         // Get local copy of current config so it is consistent for entire
         // method execution
+        // 当资源池耗尽时是否阻塞
         final boolean blockWhenExhausted = getBlockWhenExhausted();
 
         boolean create;
@@ -412,8 +414,8 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
 
         while (p == null) {
             create = false;
-            p = idleObjects.pollFirst();
-            if (p == null) {
+            p = idleObjects.pollFirst(); // 从资源池获取对象
+            if (p == null) { // 如果为空，则新创建一个对象
                 p = create();
                 if (p != null) {
                     create = true;
@@ -437,12 +439,15 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
                     throw new NoSuchElementException("Pool exhausted");
                 }
             }
+            // 判断当前对象是否为IDLE状态
             if (!p.allocate()) {
                 p = null;
             }
 
+            // 最终获取到对象实例
             if (p != null) {
                 try {
+                    // 激活对象
                     factory.activateObject(p);
                 } catch (final Exception e) {
                     try {
@@ -467,9 +472,9 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
                         PoolUtils.checkRethrow(t);
                         validationThrowable = t;
                     }
-                    if (!validate) {
+                    if (!validate) { // 无效
                         try {
-                            destroy(p);
+                            destroy(p); // 销毁
                             destroyedByBorrowValidationCount.incrementAndGet();
                         } catch (final Exception e) {
                             // Ignore - validation failure is more important
@@ -833,26 +838,29 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
         Boolean create = null;
         while (create == null) {
             synchronized (makeObjectCountLock) {
-                final long newCreateCount = createCount.incrementAndGet();
-                if (newCreateCount > localMaxTotal) {
+                final long newCreateCount = createCount.incrementAndGet(); // 增加创建对象数
+                if (newCreateCount > localMaxTotal) { // 超过最大对象数
                     // The pool is currently at capacity or in the process of
                     // making enough new objects to take it to capacity.
-                    createCount.decrementAndGet();
+                    createCount.decrementAndGet(); // 回滚
+
                     if (makeObjectCount == 0) {
+                        // 正在创建的Object数目，正在创建的为0，那么也就不用等待了
                         // There are no makeObject() calls in progress so the
                         // pool is at capacity. Do not attempt to create a new
                         // object. Return and wait for an object to be returned
                         create = Boolean.FALSE;
                     } else {
+                        // 如果正在创建的对象数不为0，则还有创建对象的进程没有完成，所以需要等待这些进程执行完成
                         // There are makeObject() calls in progress that might
                         // bring the pool to capacity. Those calls might also
                         // fail so wait until they complete and then re-test if
                         // the pool is at capacity or not.
                         makeObjectCountLock.wait(localMaxWaitTimeMillis);
                     }
-                } else {
+                } else { // 没有超过最大对象数，则创建一个新对象
                     // The pool is not at capacity. Create a new object.
-                    makeObjectCount++;
+                    makeObjectCount++; // 表示有一个对象正在产生
                     create = Boolean.TRUE;
                 }
             }
@@ -865,19 +873,22 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
             }
         }
 
+        // 如果没有产生新的对象
         if (!create.booleanValue()) {
             return null;
         }
 
         final PooledObject<T> p;
         try {
-            p = factory.makeObject();
+            p = factory.makeObject(); // 新建对象
         } catch (final Throwable e) {
             createCount.decrementAndGet();
             throw e;
         } finally {
+            // 释放锁，并唤醒所有等待的线程
+            // 一个新的对象已经创建成功，需要重新检查是否需要产生新对象
             synchronized (makeObjectCountLock) {
-                makeObjectCount--;
+                makeObjectCount--; // 表示一个对象产生结束
                 makeObjectCountLock.notifyAll();
             }
         }
@@ -891,7 +902,9 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
             }
         }
 
-        createdCount.incrementAndGet();
+        createdCount.incrementAndGet();// 对象产生成功，产生的对象数 +1
+
+        // 新创建的对象放到map中，并不放到idleObjects中
         allObjects.put(new IdentityWrapper<>(p.getObject()), p);
         return p;
     }
@@ -1138,6 +1151,9 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
 
     // --- configuration attributes --------------------------------------------
 
+    /**
+     * 对象池中最大(最小)的空闲对象个数。默认值是8（0）。
+     */
     private volatile int maxIdle = GenericObjectPoolConfig.DEFAULT_MAX_IDLE;
     private volatile int minIdle = GenericObjectPoolConfig.DEFAULT_MIN_IDLE;
     private final PooledObjectFactory<T> factory;
@@ -1152,6 +1168,7 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
      * #_maxActive}. Map keys are pooled objects, values are the PooledObject
      * wrappers used internally by the pool.
      */
+    // 维护对象池中所有状态的对象
     private final Map<IdentityWrapper<T>, PooledObject<T>> allObjects =
         new ConcurrentHashMap<>();
     /*
@@ -1164,6 +1181,8 @@ public class GenericObjectPool<T> extends BaseGenericObjectPool<T>
     private final AtomicLong createCount = new AtomicLong(0);
     private long makeObjectCount = 0;
     private final Object makeObjectCountLock = new Object();
+
+    // 维护所有idle状态的对象
     private final LinkedBlockingDeque<PooledObject<T>> idleObjects;
 
     // JMX specific attributes

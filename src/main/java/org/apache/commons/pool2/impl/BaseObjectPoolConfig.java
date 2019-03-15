@@ -19,6 +19,8 @@ package org.apache.commons.pool2.impl;
 import org.apache.commons.pool2.BaseObject;
 
 /**
+ * 对象池配置
+ *
  * Provides the implementation for the common attributes shared by the
  * sub-classes. New instances of this class will be created using the defaults
  * defined by the public constants.

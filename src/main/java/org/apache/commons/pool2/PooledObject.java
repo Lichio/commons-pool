@@ -20,6 +20,8 @@ import java.io.PrintWriter;
 import java.util.Deque;
 
 /**
+ * 池化对象，对池中对象的封装，封装对象的状态和一些其他信息。
+ *
  * Defines the wrapper that is used to track the additional information, such as
  * state, for the pooled objects.
  * <p>
